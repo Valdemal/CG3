@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from math import cos, pi, sin, radians
 from typing import List
 
@@ -77,16 +77,64 @@ class Cycle(Figure):
         pass
 
 
-class RegularPolygon(Figure):
-    def __init__(self, sides_count: int, center_distance: float = 0, *args, **kwargs):
+def connect_points(points: List[QPointF], painter: QPainter, brush: QBrush):
+    path = QPainterPath()
+    path.moveTo(points[0])
+    for i in range(1, len(points)):
+        path.lineTo(points[i])
+        painter.drawLine(points[i - 1], points[i])
+
+    painter.drawLine(points[len(points) - 1], points[0])
+    path.lineTo(points[0])
+    painter.fillPath(path, brush)
+
+
+def rotate_point(pivot: QPointF, center: QPointF, angle_in_degrees: float):
+    x_diff = pivot.x() - center.x()
+    y_diff = pivot.y() - center.y()
+    cos_fi = cos(radians(angle_in_degrees))
+    sin_fi = sin(radians(angle_in_degrees))
+
+    pivot.setX(center.x() + x_diff * cos_fi - y_diff * sin_fi)
+    pivot.setY(center.y() + x_diff * sin_fi + y_diff * cos_fi)
+
+
+class Rectangle(Figure):
+
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._points = self._init_points()
+
+    @abstractmethod
+    def _init_points(self) -> List[QPointF]:
+        pass
+
+    def get_points(self) -> List[QPointF]:
+        return self._points
+
+    @Figure.center.setter
+    def center(self, value: QPointF):
+        Figure.center.fset(self, value)
+        self._points = self._init_points()
+
+    def draw(self, painter: QPainter):
+        super().draw(painter)
+        connect_points(self._points, painter, self.brush)
+
+    def rotate(self, angle_in_degrees: float):
+        for point in self._points:
+            rotate_point(point, self.center, angle_in_degrees)
+
+
+class RegularPolygon(Rectangle):
+    def __init__(self, sides_count: int, center_distance: float = 0, *args, **kwargs):
         self.__sides_count = sides_count
         self.__center_distance = center_distance
-        self.__init_points()
+        super().__init__(*args, **kwargs)
 
-    def __init_points(self):
+    def _init_points(self):
         val = 2 * pi / self.sides_count
-        self.__points = [
+        self._points = [
             QPointF(
                 self.center.x() + self.center_distance * cos(val * i),
                 self.center.y() + self.center_distance * sin(val * i),
@@ -100,40 +148,36 @@ class RegularPolygon(Figure):
     @center_distance.setter
     def center_distance(self, value: float):
         self.__center_distance = value
-        self.__init_points()
+        self._init_points()
 
     @property
     def sides_count(self) -> int:
         return self.__sides_count
 
-    def get_points(self) -> List[QPointF]:
-        return self.__points
 
-    def draw(self, painter: QPainter):
-        super().draw(painter)
+class Star(Rectangle):
 
-        path = QPainterPath()
-        path.moveTo(self.__points[0])
-        for i in range(1, len(self.__points)):
-            path.lineTo(self.__points[i])
-            painter.drawLine(self.__points[i - 1], self.__points[i])
+    def __init__(self, inner_radius: float, outer_radius: float,
+                 points_count: int, *args, **kwargs):
+        self.__inner_radius = inner_radius
+        self.__outer_radius = outer_radius
+        self.__points_count = points_count
+        super().__init__(*args, **kwargs)
 
-        painter.drawLine(self.__points[len(self.__points) - 1], self.__points[0])
-        path.lineTo(self.__points[0])
-        painter.fillPath(path, self.brush)
+    def _init_points(self) -> List[QPointF]:
+        points = []
 
-    def rotate(self, angle_in_degrees: float):
-        for point in self.__points:
-            x_diff = point.x() - self.center.x()
-            y_diff = point.y() - self.center.y()
-            cos_fi = cos(radians(angle_in_degrees))
-            sin_fi = sin(radians(angle_in_degrees))
+        val = pi / self.__points_count
 
-            point.setX(self.center.x() + x_diff * cos_fi - y_diff * sin_fi)
+        for i in range(self.__points_count * 2):
+            if i % 2 == 0:
+                radius = self.__outer_radius
+            else:
+                radius = self.__inner_radius
 
-            point.setY(self.center.y() + x_diff * sin_fi + y_diff * cos_fi)
+            points.append(QPointF(
+                self.center.x() + radius * cos(val * i),
+                self.center.y() + radius * sin(val * i)
+            ))
 
-    @Figure.center.setter
-    def center(self, value: QPointF):
-        Figure.center.fset(self, value)
-        self.__init_points()
+        return points
