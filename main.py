@@ -1,7 +1,8 @@
-from PyQt5.QtCore import QRect, Qt, QPoint, QPointF, QRectF
-from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
-from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.uic.properties import QtGui
+from typing import Callable
+
+from PyQt5.QtCore import QRect, Qt, QPoint, QPointF, QRectF, QTimer
+from PyQt5.QtGui import QPainter, QPen, QBrush, QColor, QPaintEvent, QMouseEvent
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel
 
 from graphics.figures import Cycle, Drawable
 from graphics.pictures import Picture, PictureWidget
@@ -14,6 +15,7 @@ class Flower(Drawable):
         self.__petal_radius = petal_radius
         self.__petals_count = petals_count
         self.__core = core
+        self.__rotation = 0
 
     @property
     def core(self) -> Cycle:
@@ -32,22 +34,26 @@ class Flower(Drawable):
         self.__core.draw(painter)
 
     def rotate(self, angle_in_degrees: float):
-        pass
+        self.__rotation += angle_in_degrees
+
+        if self.__rotation > 360:
+            self.__rotation %= 360
+        elif self.__rotation < -360:
+            self.__rotation %= -360
 
     def __draw_petals(self, painter):
-
         rect = QRect(
             int(self.core.center.x() - self.petal_radius),
             int(self.core.center.y() - self.petal_radius),
-            int(self.petal_radius*2),
-            int(self.petal_radius*2),
+            int(self.petal_radius * 2),
+            int(self.petal_radius * 2),
         )
 
         painter.setPen(self.__core.pen)
         painter.setBrush(QBrush(QColor("purple")))
 
         step_angle = int(360 / (self.__petals_count * 2)) * 16
-        start = 0
+        start = self.__rotation * 16
         for i in range(self.__petals_count):
             painter.drawPie(rect, start, step_angle)
             start += 2 * step_angle
@@ -61,8 +67,34 @@ class Ventilator(Picture):
     def __init__(self, draw_rect: QRect):
         super(Ventilator, self).__init__()
         self.__draw_rect = draw_rect
+        self.__enabled = False
 
         self.__init_components()
+
+    def set_draw_rect(self, draw_rect: QRect):
+        self.__draw_rect = draw_rect
+
+    def change_enable_status(self):
+        self.__enabled = not self.__enabled
+
+    def animation(self):
+        if self.__enabled:
+            self.__flower.rotate(-15)
+
+    def draw(self, painter: QPainter):
+        start = self.__draw_rect.bottomLeft()
+        width = self.__draw_rect.width()
+        height = self.__draw_rect.height()
+
+        painter.setPen(QPen(Qt.black))
+
+        self.__update_components_position(start, width, height)
+
+        # Порядок важен
+        self.__draw_leg(painter, start, width, height)
+        self.__draw_platform(painter, start, width, height)
+
+        super().draw(painter)
 
     def __init_components(self):
         main_pen = QPen(Qt.black, self.MAIN_PEN_THICKNESS)
@@ -86,24 +118,6 @@ class Ventilator(Picture):
         self.__flower.core.radius = radius_coefficient * 0.05
         self.__flower.petal_radius = radius_coefficient * 0.25
 
-    def set_draw_rect(self, draw_rect: QRect):
-        self.__draw_rect = draw_rect
-
-    def draw(self, painter: QPainter):
-        start = self.__draw_rect.bottomLeft()
-        width = self.__draw_rect.width()
-        height = self.__draw_rect.height()
-
-        painter.setPen(QPen(Qt.black))
-
-        self.__update_components_position(start, width, height)
-
-        # Порядок важен
-        self.__draw_leg(painter, start, width, height)
-        self.__draw_platform(painter, start, width, height)
-
-        super().draw(painter)
-
     def __draw_leg(self, painter: QPainter, start: QPoint, width: float, height: float):
         # зарефакторить, чтобы не создавалось дополнительное перо
         painter.setPen(QPen(Qt.black, height * self.LEG_THICKNESS_IN_PERCENT))
@@ -126,54 +140,44 @@ class CycleButton(QWidget, Cycle):
     ENABLE_BRUSH = QBrush(Qt.green)
     DISABLE_BRUSH = QBrush(Qt.red)
 
-    def __init__(self, radius: float = 0, center: QPointF = QPointF(0, 0), pen: QPen = QPen(), *args, **kwargs):
+    def __init__(self, radius=0, center=QPointF(0, 0), pen: QPen = QPen(), on_press_event: Callable = None, *args,
+                 **kwargs):
         QWidget.__init__(self, *args, **kwargs)
         Cycle.__init__(self, pen=pen)
-        print(self.parent())
         self.radius = radius
         self.center = center
         self.brush = self.DISABLE_BRUSH
         self.__enabled = False
+        self.__on_press_event = on_press_event
 
     @Cycle.center.setter
     def center(self, value: QPointF):
         Cycle.center.fset(self, value)
-        self.move(int(self.center.x()-self.radius), int(self.center.y()-self.radius))
+        self.move(int(self.center.x() - self.radius), int(self.center.y() - self.radius))
 
     @Cycle.radius.setter
     def radius(self, value: float):
         Cycle.radius.fset(self, value)
-        self.resize(int(self.radius*2), int(self.radius*2))
+        self.resize(int(self.radius * 2), int(self.radius * 2))
 
-    def draw(self, painter: QPainter):
-        Cycle.draw(self, painter)
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if self.__on_press_event is not None:
+            self.__on_press_event()
 
-        # painter.drawRect(int(self.center.x()), int(self.center.y()), int(self.radius*2), int(self.radius*2))
-        painter.drawRect(self.rect())
+        if self.__enabled:
+            self.__disable()
+        else:
+            self.__enable()
 
-    def disable(self):
+        self.repaint()
+
+    def __disable(self):
         self.__enabled = False
         self.brush = self.DISABLE_BRUSH
 
-    def enable(self):
+    def __enable(self):
         self.__enabled = True
         self.brush = self.ENABLE_BRUSH
-
-    def is_enabled(self) -> bool:
-        return self.__enabled
-
-    # def paintEvent(self, event: QtGui.QPaintEvent) -> None:
-    #     self.draw()
-    #
-    # def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-    #     if self.is_enabled():
-    #         print('Выключение')
-    #         self.disable()
-    #     else:
-    #         print('Включение')
-    #         self.enable()
-    #
-    #     self.repaint()
 
 
 class MainWidget(PictureWidget):
@@ -191,6 +195,14 @@ class MainWidget(PictureWidget):
 
         self.__draw_rect: QRect = QRect()
         self.__init_components()
+
+        self.__timer = QTimer()
+        self.__timer.timeout.connect(self.animation)
+        self.__timer.start(50)
+
+    def animation(self):
+        self.__ventilator.animation()
+        self.repaint()
 
     def paintEvent(self, event) -> None:
         painter = QPainter()
@@ -216,7 +228,11 @@ class MainWidget(PictureWidget):
         self.__main_pen = QPen(Qt.black, self.MAIN_PEN_THICKNESS)
 
         self.__ventilator = Ventilator(QRect())
-        self.__button = CycleButton(parent=self, pen=self.__main_pen)
+        self.__button = CycleButton(
+            parent=self,
+            pen=self.__main_pen,
+            on_press_event=self.__ventilator.change_enable_status
+        )
 
         self.components = [self.__ventilator, self.__button]
 
@@ -251,7 +267,7 @@ if __name__ == '__main__':
     app = QApplication([])
 
     pw = PictureWidget()
-    widget = MainWidget('Лабораторная работа №3')
+    window = MainWidget('Лабораторная работа №3')
 
-    widget.show()
+    window.show()
     app.exec_()
