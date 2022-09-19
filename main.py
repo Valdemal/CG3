@@ -4,11 +4,10 @@ from PyQt5.QtCore import QRect, Qt, QPoint, QPointF, QTimer
 from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
 
+from cycle_button import CycleButton
 from graphics.figures import Star
 from graphics.pictures import Picture, PictureWidget
-
 from ventilator import Ventilator
-from cycle_button import CycleButton
 
 
 class PhysicalStar(Star):
