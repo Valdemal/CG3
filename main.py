@@ -4,32 +4,15 @@ from PyQt5.QtCore import QRect, Qt, QPoint, QPointF, QTimer
 from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
 
+from physical_star import PhysicalStar
 from cycle_button import CycleButton
-from graphics.figures import Star
 from graphics.pictures import Picture, PictureWidget
 from ventilator import Ventilator
 
 
-class PhysicalStar(Star):
-    POINTS_COUNT = 4
-
-    def __init__(self, inner_radius: float, outer_radius: float,
-                 degree_in_frame_speed: float, *args, **kwargs):
-        super().__init__(inner_radius, outer_radius, PhysicalStar.POINTS_COUNT,
-                         *args, **kwargs)
-
-        self.__angle_speed = degree_in_frame_speed
-
-    def animation(self):
-        self.rotate(self.__angle_speed)
-
-    def is_alive(self) -> bool:
-        return True
-
-
 class MainWidget(PictureWidget):
-    MIN_HEIGHT = 400
-    MIN_WIDTH = 400
+    MIN_HEIGHT = 600
+    MIN_WIDTH = 600
     MARGIN = 10  # размер отступа внутри окна в пикселях
     MAIN_PEN_THICKNESS = 3  # Толщина основного пера
     CHANCE_OF_STAR_CREATING_IN_FRAME = 0.1
@@ -46,7 +29,7 @@ class MainWidget(PictureWidget):
 
         self.__timer = QTimer()
         self.__timer.timeout.connect(self.animation)
-        self.__timer.start(50)
+        self.__timer.start(int(1000 / 30))
 
     def animation(self):
 
@@ -60,12 +43,12 @@ class MainWidget(PictureWidget):
         # анимация звезд
         for star in stars:
             if isinstance(star, PhysicalStar):
-                star.animation()
+                star.animation(self.__ventilator.get_flower().core.center, self.__draw_rect)
 
         # удаление потухших звезд
-        self.__stars_composite.components = [
-            star for star in stars if isinstance(star, PhysicalStar) and star.is_alive()
-        ]
+        self.__stars_composite.components = list(filter(
+            lambda s: s.is_alive(self.__draw_rect), stars
+        ))
 
         self.repaint()
 
@@ -92,19 +75,17 @@ class MainWidget(PictureWidget):
     def __create_random_star(self):
         star_radius = self.__ventilator.get_flower().core.radius
 
-        # star_center = self.__ventilator.get_flower().core.center
-        star_center = QPointF(
-            random.random() * self.width(),
-            random.random() * self.height()
-        )
+        star_center = self.__ventilator.get_flower().core.center
 
         star_brush = QBrush(QColor('yellow'))
 
         self.__stars_composite.components.append(
             PhysicalStar(
                 inner_radius=star_radius * 0.25, outer_radius=star_radius,
-                degree_in_frame_speed=random.randint(1, 360), center=star_center,
-                pen=self.__main_pen, brush=star_brush
+                inner_angle_speed=random.randint(20, 45), outer_angle_speed=random.random() / 10,
+                distance_from_center_speed=random.randint(1, 5),
+                center=star_center,
+                pen=QPen(Qt.black, self.MAIN_PEN_THICKNESS), brush=star_brush
             )
         )
 

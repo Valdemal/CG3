@@ -16,7 +16,7 @@ class Matrix:
             self.__array = [[0 for _ in range(self.N)] for _ in range(self.N)]
 
     @staticmethod
-    def create_transfer(delta_x: float, delta_y: float) -> 'Matrix':
+    def transfer(delta_x: float, delta_y: float) -> 'Matrix':
         return Matrix([
             [1, 0, delta_x],
             [0, 1, delta_y],
@@ -24,16 +24,16 @@ class Matrix:
         ])
 
     @staticmethod
-    def create_rotate(angle_in_degrees: float) -> 'Matrix':
+    def rotate(angle_in_degrees: float) -> 'Matrix':
         angle_in_radians = radians(angle_in_degrees)
         return Matrix([
-            [cos(angle_in_radians), sin(angle_in_radians), 0],
+            [cos(angle_in_radians), -sin(angle_in_radians), 0],
             [sin(angle_in_radians), cos(angle_in_radians), 0],
             [0, 0, 1]
         ])
 
     @staticmethod
-    def create_scaling(kx: float, ky: float) -> 'Matrix':
+    def scaling(kx: float, ky: float) -> 'Matrix':
         return Matrix([
             [kx, 0, 0],
             [0, ky, 0],
@@ -41,7 +41,7 @@ class Matrix:
         ])
 
     @staticmethod
-    def create_reflection(axis: Literal['x', 'y', 'xy']) -> 'Matrix':
+    def reflection(axis: Literal['x', 'y', 'xy']) -> 'Matrix':
         x = y = 1
         if axis == 'xy':
             x = y = -1
@@ -89,4 +89,4 @@ class Vector(Tuple[float, float, float]):
         return Vector((point.x(), point.y(), 1))
 
     def to_point(self) -> QPointF:
-        return QPointF(self[0], self[1])
+        return QPointF(self[0] / self[2], self[1] / self[2])

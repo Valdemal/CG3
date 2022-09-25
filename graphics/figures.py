@@ -99,6 +99,17 @@ def rotate_point(pivot: QPointF, center: QPointF, angle_in_degrees: float):
     pivot.setY(center.y() + x_diff * sin_fi + y_diff * cos_fi)
 
 
+def increase_angle(angle: float, increace_in_degrees: float) -> float:
+    angle += increace_in_degrees
+
+    if angle > 360:
+        angle %= 360
+    elif angle < -360:
+        angle %= -360
+
+    return angle
+
+
 class Rectangle(Figure):
 
     def __init__(self, *args, **kwargs):
@@ -163,6 +174,14 @@ class Star(Rectangle):
         self.__outer_radius = outer_radius
         self.__points_count = points_count
         super().__init__(*args, **kwargs)
+
+    @property
+    def outer_radius(self) -> float:
+        return self.__outer_radius
+
+    @property
+    def inner_radius(self) -> float:
+        return self.__inner_radius
 
     def _init_points(self) -> List[QPointF]:
         points = []

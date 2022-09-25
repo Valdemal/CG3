@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QRect
 from PyQt5.QtGui import QPainter, QBrush
 
-from graphics.figures import Drawable, Cycle
+from graphics.figures import Drawable, Cycle, increase_angle
 
 
 class Flower(Drawable):
@@ -31,12 +31,7 @@ class Flower(Drawable):
         self.__core.draw(painter)
 
     def rotate(self, angle_in_degrees: float):
-        self.__rotation += angle_in_degrees
-
-        if self.__rotation > 360:
-            self.__rotation %= 360
-        elif self.__rotation < -360:
-            self.__rotation %= -360
+        self.__rotation = increase_angle(self.__rotation, angle_in_degrees)
 
     def __draw_petals(self, painter):
         rect = QRect(
