@@ -2,7 +2,7 @@ import random
 
 from PyQt5.QtCore import QRect, Qt, QPoint, QPointF, QTimer
 from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QWidget
 
 from physical_star import PhysicalStar
 from cycle_button import CycleButton
@@ -10,26 +10,16 @@ from graphics.pictures import Picture, PictureWidget
 from ventilator import Ventilator
 
 
-class MainWidget(PictureWidget):
-    MIN_HEIGHT = 600
-    MIN_WIDTH = 600
-    MARGIN = 10  # размер отступа внутри окна в пикселях
+class Composition(Picture):
     MAIN_PEN_THICKNESS = 3  # Толщина основного пера
     CHANCE_OF_STAR_CREATING_IN_FRAME = 0.1
 
-    def __init__(self, title: str):
-        PictureWidget.__init__(self)
+    def __init__(self, draw_rect: QRect, main_window: QWidget):
+        super().__init__()
 
-        self.setMinimumSize(self.MIN_WIDTH, self.MIN_HEIGHT)
-        self.resize(self.MIN_WIDTH, self.MIN_HEIGHT)
-        self.setWindowTitle(title)
-
-        self.__draw_rect: QRect = QRect()
+        self.__main_window = main_window
+        self.__draw_rect = draw_rect
         self.__init_components()
-
-        self.__timer = QTimer()
-        self.__timer.timeout.connect(self.animation)
-        self.__timer.start(int(1000 / 30))
 
     def animation(self):
 
@@ -50,27 +40,40 @@ class MainWidget(PictureWidget):
             lambda s: s.is_alive(self.__draw_rect), stars
         ))
 
-        self.repaint()
-
-    def paintEvent(self, event) -> None:
-        painter = QPainter()
-        painter.begin(self)
-        painter.setRenderHint(QPainter.Antialiasing)  # Включение сглаживания
-
-        self.__update_components(event)
-
-        self.draw(painter)
-
-        painter.end()
-
     def draw(self, painter):
         painter.setPen(self.__main_pen)
         painter.drawRect(self.__draw_rect)
         PictureWidget.draw(self, painter)
 
     def show(self) -> None:
-        PictureWidget.show(self)
         self.__button.show()
+
+    def update_components(self, draw_rect: QRect):
+        self.__draw_rect = draw_rect
+        self.__ventilator.set_draw_rect(self.__draw_rect)
+
+        start = self.__draw_rect.bottomLeft()
+
+        self.__button.center = QPointF(
+            start.x() + self.__draw_rect.width() * 0.6,
+            start.y() - self.__draw_rect.height() * 0.05
+        )
+
+        self.__button.radius = min(self.__draw_rect.width(), self.__draw_rect.height()) * 0.025
+
+    def __init_components(self):
+        self.__main_pen = QPen(Qt.black, self.MAIN_PEN_THICKNESS)
+
+        self.__ventilator = Ventilator(QRect())
+        self.__button = CycleButton(
+            parent=self.__main_window,
+            pen=self.__main_pen,
+            on_press_event=self.__ventilator.change_enable_status
+        )
+
+        self.__stars_composite = Picture()
+
+        self.components = [self.__ventilator, self.__button, self.__stars_composite]
 
     def __create_random_star(self):
         star_radius = self.__ventilator.get_flower().core.radius
@@ -89,42 +92,47 @@ class MainWidget(PictureWidget):
             )
         )
 
-    def __init_components(self):
-        self.__main_pen = QPen(Qt.black, self.MAIN_PEN_THICKNESS)
 
-        self.__ventilator = Ventilator(QRect())
-        self.__button = CycleButton(
-            parent=self,
-            pen=self.__main_pen,
-            on_press_event=self.__ventilator.change_enable_status
-        )
+class MainWidget(QWidget):
+    MIN_HEIGHT = 600
+    MIN_WIDTH = MIN_HEIGHT * 2
+    MARGIN = 10  # размер отступа внутри окна в пикселях
 
-        self.__stars_composite = Picture()
+    def __init__(self, title: str):
+        super().__init__()
 
-        self.components = [self.__ventilator, self.__button, self.__stars_composite]
+        self.setMinimumSize(self.MIN_WIDTH, self.MIN_HEIGHT)
+        self.resize(self.MIN_WIDTH, self.MIN_HEIGHT)
+        self.setWindowTitle(title)
 
-    def __update_components(self, event):
-        self.__draw_rect = self.__get_draw_rect(event)
-        self.__ventilator.set_draw_rect(self.__draw_rect)
+        self.__composition = Composition(QRect(), self)
 
-        start = self.__draw_rect.bottomLeft()
+        self.__timer = QTimer()
+        self.__timer.timeout.connect(self.animation)
+        self.__timer.start(int(1000 / 30))
 
-        self.__button.center = QPointF(
-            start.x() + self.__draw_rect.width() * 0.6,
-            start.y() - self.__draw_rect.height() * 0.05
-        )
+    def animation(self):
+        self.__composition.animation()
 
-        self.__button.radius = min(self.__draw_rect.width(), self.__draw_rect.height()) * 0.025
+        self.repaint()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter()
+        painter.begin(self)
+        painter.setRenderHint(QPainter.Antialiasing)  # Включение сглаживания
+
+        self.__composition.update_components(self.__get_draw_rect(event))
+
+        self.__composition.draw(painter)
+
+        painter.end()
 
     def __get_draw_rect(self, event) -> QRect:
-        center = QPoint(int(self.width() / 2), int(self.height() / 2))
-        half_of_square_hypotenuse = int(min(self.width(), self.height()) / 2)
-        offset_coefficient = self.MARGIN - half_of_square_hypotenuse
-
         draw_rect: QRect = event.rect()
         draw_rect.setCoords(
-            center.x() + offset_coefficient, center.y() + offset_coefficient,
-            center.x() - offset_coefficient, center.y() - offset_coefficient
+            draw_rect.x() + self.MARGIN, draw_rect.y() + self.MARGIN,
+            draw_rect.x() + int(draw_rect.width() / 2) - self.MARGIN,
+            draw_rect.y() + draw_rect.height() - self.MARGIN
         )
 
         return draw_rect
