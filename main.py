@@ -1,21 +1,21 @@
 import random
 
-from PyQt5.QtCore import QRect, Qt, QPoint, QPointF, QTimer
+from PyQt5.QtCore import QRect, Qt, QPointF, QTimer
 from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
 from PyQt5.QtWidgets import QApplication, QWidget
 
-from physical_star import PhysicalStar
 from cycle_button import CycleButton
 from graphics.pictures import Picture, PictureWidget
+from physical_star import PhysicalStar
 from ventilator import Ventilator
 
 
-class Composition(Picture):
+class Composition(PictureWidget):
     MAIN_PEN_THICKNESS = 3  # Толщина основного пера
     CHANCE_OF_STAR_CREATING_IN_FRAME = 0.1
 
-    def __init__(self, draw_rect: QRect, main_window: QWidget):
-        super().__init__()
+    def __init__(self, draw_rect: QRect, main_window: QWidget, *args, **kwargs):
+        PictureWidget.__init__(self, *args, **kwargs)
 
         self.__main_window = main_window
         self.__draw_rect = draw_rect
@@ -113,7 +113,6 @@ class MainWidget(QWidget):
 
     def animation(self):
         self.__composition.animation()
-
         self.repaint()
 
     def paintEvent(self, event) -> None:
@@ -122,17 +121,16 @@ class MainWidget(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)  # Включение сглаживания
 
         self.__composition.update_components(self.__get_draw_rect(event))
-
         self.__composition.draw(painter)
 
         painter.end()
 
     def __get_draw_rect(self, event) -> QRect:
+
         draw_rect: QRect = event.rect()
         draw_rect.setCoords(
-            draw_rect.x() + self.MARGIN, draw_rect.y() + self.MARGIN,
-            draw_rect.x() + int(draw_rect.width() / 2) - self.MARGIN,
-            draw_rect.y() + draw_rect.height() - self.MARGIN
+            self.MARGIN, self.MARGIN,
+            int(self.width() / 2 - self.MARGIN), self.height() - self.MARGIN
         )
 
         return draw_rect
