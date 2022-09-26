@@ -1,9 +1,12 @@
 from abc import abstractmethod
-from math import cos, pi, sin, radians
+from math import cos, pi, sin
 from typing import List
 
 from PyQt5.QtCore import QPointF
-from PyQt5.QtGui import QPainter, QBrush, QPen, QPainterPath
+from PyQt5.QtGui import QPainter, QBrush, QPen
+
+from graphics.matrix import Matrix
+from graphics.modifications import connect_points, rotate_point, affine_to_point
 
 
 class Drawable:
@@ -14,6 +17,10 @@ class Drawable:
 
     @abstractmethod
     def rotate(self, angle_in_degrees: float):
+        pass
+
+    @abstractmethod
+    def draw_with_affine(self, affine_matrix: Matrix, painter: QPainter):
         pass
 
 
@@ -55,6 +62,10 @@ class Figure(Drawable):
     def rotate(self, angle_in_degrees: float):
         pass
 
+    @abstractmethod
+    def draw_with_affine(self, affine_matrix: Matrix, painter: QPainter):
+        pass
+
 
 class Cycle(Figure):
     def __init__(self, radius: float = 0, *args, **kwargs):
@@ -73,41 +84,12 @@ class Cycle(Figure):
         super(Cycle, self).draw(painter)
         painter.drawEllipse(self.center, self.radius, self.radius)
 
+    def draw_with_affine(self, affine_matrix: Matrix, painter: QPainter):
+        super(Cycle, self).draw(painter)
+        painter.drawEllipse(affine_to_point(self.center, affine_matrix), self.radius, self.radius)
+
     def rotate(self, angle_in_degrees: float):
         pass
-
-
-def connect_points(points: List[QPointF], painter: QPainter, brush: QBrush):
-    path = QPainterPath()
-    path.moveTo(points[0])
-    for i in range(1, len(points)):
-        path.lineTo(points[i])
-        painter.drawLine(points[i - 1], points[i])
-
-    painter.drawLine(points[len(points) - 1], points[0])
-    path.lineTo(points[0])
-    painter.fillPath(path, brush)
-
-
-def rotate_point(pivot: QPointF, center: QPointF, angle_in_degrees: float):
-    x_diff = pivot.x() - center.x()
-    y_diff = pivot.y() - center.y()
-    cos_fi = cos(radians(angle_in_degrees))
-    sin_fi = sin(radians(angle_in_degrees))
-
-    pivot.setX(center.x() + x_diff * cos_fi - y_diff * sin_fi)
-    pivot.setY(center.y() + x_diff * sin_fi + y_diff * cos_fi)
-
-
-def increase_angle(angle: float, increace_in_degrees: float) -> float:
-    angle += increace_in_degrees
-
-    if angle > 360:
-        angle %= 360
-    elif angle < -360:
-        angle %= -360
-
-    return angle
 
 
 class Rectangle(Figure):
@@ -131,6 +113,12 @@ class Rectangle(Figure):
     def draw(self, painter: QPainter):
         super().draw(painter)
         connect_points(self._points, painter, self.brush)
+
+    def draw_with_affine(self, affine_matrix: Matrix, painter: QPainter):
+        super().draw(painter)
+        connect_points(list(
+            map(lambda point: affine_to_point(point, affine_matrix), self.get_points())
+        ), painter, self.brush)
 
     def rotate(self, angle_in_degrees: float):
         for point in self._points:

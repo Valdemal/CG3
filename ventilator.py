@@ -3,6 +3,8 @@ from PyQt5.QtGui import QPainter, QBrush, QColor, QPen
 
 from flower import Flower
 from graphics.figures import Cycle
+from graphics.matrix import Matrix
+from graphics.modifications import affine_to_rect
 from graphics.pictures import Picture
 
 
@@ -34,18 +36,20 @@ class Ventilator(Picture):
         self.__flower.rotate(-15)
 
     def draw(self, painter: QPainter):
-        start = self.__draw_rect.bottomLeft()
-        width = self.__draw_rect.width()
-        height = self.__draw_rect.height()
+        self.draw_by_rect(self.__draw_rect, painter)
 
+    def draw_with_affine(self, affine_matrix: Matrix, painter: QPainter):
+        self.draw_by_rect(affine_to_rect(self.__draw_rect, affine_matrix), painter)
+
+    def draw_by_rect(self, rect: QRect, painter: QPainter):
+        start = rect.bottomLeft()
+        width = rect.width()
+        height = rect.height()
         painter.setPen(QPen(Qt.black))
-
         self.__update_components_position(start, width, height)
-
         # Порядок важен
         self.__draw_leg(painter, start, width, height)
         self.__draw_platform(painter, start, width, height)
-
         super().draw(painter)
 
     def __init_components(self):
@@ -72,7 +76,6 @@ class Ventilator(Picture):
         self.__flower.petal_radius = radius_coefficient * 0.25
 
     def __draw_leg(self, painter: QPainter, start: QPoint, width: float, height: float):
-        # зарефакторить, чтобы не создавалось дополнительное перо
         painter.setPen(QPen(Qt.black, height * self.LEG_THICKNESS_IN_PERCENT))
 
         x = start.x() + 0.5 * width

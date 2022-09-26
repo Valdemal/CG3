@@ -1,7 +1,8 @@
 from PyQt5.QtCore import QPointF, QRect
 
-from graphics.figures import Star, increase_angle, rotate_point
-from graphics.matrix import Matrix, Vector
+from graphics.figures import Star, rotate_point
+from graphics.matrix import Matrix
+from graphics.modifications import increase_angle, affine_to_point
 
 
 class PhysicalStar(Star):
@@ -33,11 +34,7 @@ class PhysicalStar(Star):
     def is_alive(self, draw_rect: QRect) -> bool:
         """Возвращает True, если звезда находится внутри draw_rect"""
 
-        def is_in_rect(point: QPointF) -> bool:
-            return draw_rect.x() <= point.x() <= (draw_rect.x() + draw_rect.width()) \
-                   and draw_rect.y() <= point.y() <= (draw_rect.y() + draw_rect.height())
-
-        return all(is_in_rect(point) for point in self.get_points())
+        return all(draw_rect.contains(point.toPoint()) for point in self.get_points())
 
     def __update_characteristics(self):
         self.__inner_rotation = increase_angle(self.__inner_rotation, self.__inner_angle_speed)
@@ -45,15 +42,12 @@ class PhysicalStar(Star):
         self.__distance_speed -= self.__distance_speed * 0.005
 
     def __affine_transformations(self, center_of_rotation):
-        distance_matrix = Matrix.transfer(self.__distance_speed, self.__distance_speed)
-
         outer_rotate_matrix = Matrix.transfer(-center_of_rotation.x(), -center_of_rotation.y()) * \
                               Matrix.rotate(self.__outer_rotation) * \
-                              Matrix.transfer(center_of_rotation.x(), center_of_rotation.y())
+                              Matrix.transfer(center_of_rotation.x() + self.__distance_speed,
+                                              center_of_rotation.y() + self.__distance_speed)
 
-        affine_matrix = distance_matrix * outer_rotate_matrix
-        vector = Vector.create_by_point(self.center)
-        self.center = affine_matrix.mul_on_vector(vector).to_point()
+        self.center = affine_to_point(self.center, outer_rotate_matrix)
 
     def __update_color(self, draw_rect: QRect):
         distance = min(

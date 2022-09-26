@@ -4,6 +4,7 @@ from PyQt5.QtGui import QPainter
 from PyQt5.QtWidgets import QWidget
 
 from graphics.figures import Drawable
+from graphics.matrix import Matrix
 
 
 class Picture(Drawable):
@@ -25,6 +26,10 @@ class Picture(Drawable):
     def rotate(self, angle_in_degrees: float):
         for component in self.components:
             component.rotate(angle_in_degrees)
+
+    def draw_with_affine(self, affine_matrix: Matrix, painter: QPainter):
+        for component in self.components:
+            component.draw_with_affine(affine_matrix, painter)
 
 
 class PictureWidget(QWidget, Picture):
