@@ -1,4 +1,4 @@
-from math import radians, cos, sin
+from math import radians, cos, sin, sqrt
 from typing import List
 
 from PyQt5.QtCore import QPointF, QRect
@@ -52,3 +52,7 @@ def affine_to_rect(rect: QRect, affine_matrix: Matrix) -> QRect:
         affine_to_point(QPointF(coords[0], coords[1]), affine_matrix).toPoint(),
         affine_to_point(QPointF(coords[2], coords[3]), affine_matrix).toPoint()
     )
+
+
+def distance_between_points(p1: QPointF, p2: QPointF) -> float:
+    return sqrt((p2.x() - p1.x()) ** 2 + (p2.y() - p1.y()) ** 2)

@@ -11,6 +11,8 @@ from graphics.pictures import Picture, PictureWidget
 from physical_star import PhysicalStar
 from ventilator import Ventilator
 
+FPS = 30
+
 
 class Composition(PictureWidget):
     MAIN_PEN_THICKNESS = 3  # Толщина основного пера
@@ -39,7 +41,7 @@ class Composition(PictureWidget):
 
         if self.__ventilator.is_enabled():
             self.__ventilator.animation()
-            if self.CHANCE_OF_STAR_CREATING_IN_FRAME >= random.random():
+            if len(self.__stars_composite.components) <= 10 and self.CHANCE_OF_STAR_CREATING_IN_FRAME >= random.random():
                 self.__create_random_star()
 
         stars = self.__stars_composite.components
@@ -88,8 +90,8 @@ class Composition(PictureWidget):
         self.__stars_composite.components.append(
             PhysicalStar(
                 inner_radius=star_outer_radius * 0.25, outer_radius=star_outer_radius,
-                inner_angle_speed=random.randint(20, 45), outer_angle_speed=random.random() / 10,
-                distance_from_center_speed=random.randint(1, 5),
+                inner_angle_speed=random.randint(1, 355) / FPS, outer_angle_speed=random.randint(1, FPS),
+                distance_speed=random.randint(FPS, FPS + 10),
                 center=self.__ventilator.get_flower().core.center,
                 pen=QPen(Qt.black, self.MAIN_PEN_THICKNESS),
                 brush=QBrush(QColor('yellow'))
@@ -101,7 +103,6 @@ class MainWidget(QWidget):
     MIN_HEIGHT = 600
     MIN_WIDTH = MIN_HEIGHT * 2
     MARGIN = 10  # размер отступа внутри окна в пикселях
-    FPS = 30
 
     def __init__(self, title: str):
         super().__init__()
@@ -114,7 +115,7 @@ class MainWidget(QWidget):
 
         self.__timer = QTimer()
         self.__timer.timeout.connect(self.animation)
-        self.__timer.start(int(1000 / self.FPS))
+        self.__timer.start(int(1000 / FPS))
 
     def animation(self):
         self.__composition.animation()

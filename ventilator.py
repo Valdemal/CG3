@@ -18,7 +18,17 @@ class Ventilator(Picture):
         self.__draw_rect = draw_rect
         self.__enabled = False
 
-        self.__init_components()
+        main_pen = QPen(Qt.black, self.MAIN_PEN_THICKNESS)
+        self.__flower = Flower(
+            self.PETAL_COUNT,
+            Cycle(
+                pen=main_pen,
+                brush=QBrush(Qt.black)
+            ),
+            brush=QBrush(QColor("purple"))
+        )
+
+        self.components = [self.__flower, ]
 
     def get_flower(self) -> Flower:
         return self.__flower
@@ -51,19 +61,6 @@ class Ventilator(Picture):
         self.__draw_leg(painter, start, width, height)
         self.__draw_platform(painter, start, width, height)
         super().draw(painter)
-
-    def __init_components(self):
-        main_pen = QPen(Qt.black, self.MAIN_PEN_THICKNESS)
-        self.__flower = Flower(
-            self.PETAL_COUNT,
-            Cycle(
-                pen=main_pen,
-                brush=QBrush(Qt.black)
-            ),
-            brush=QBrush(QColor("purple"))
-        )
-
-        self.components = [self.__flower, ]
 
     def __update_components_position(self, start: QPointF, width: float, height: float):
         self.__flower.core.center = QPointF(
